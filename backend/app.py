@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify
 from flask_cors import CORS
 
+from app.routes.users import users_bp
+
 
 def create_app():
     load_dotenv()
@@ -16,6 +18,8 @@ def create_app():
     @app.get("/api/health")
     def health():
         return jsonify({"status": "ok", "message": "CodeMentor AI backend is running"})
+
+    app.register_blueprint(users_bp, url_prefix="")
 
     return app
 

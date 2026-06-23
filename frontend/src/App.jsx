@@ -1,29 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useAuth0 } from '@auth0/auth0-react'
+import Debug from './pages/Debug.jsx'
+import Home from './pages/Home.jsx'
 
 function App() {
-  const [apiStatus, setApiStatus] = useState('checking...')
+  const { isLoading, isAuthenticated } = useAuth0()
+  console.log('ENV CHECK:', import.meta.env.VITE_AUTH0_DOMAIN, import.meta.env.VITE_AUTH0_CLIENT_ID)
 
-  useEffect(() => {
-    fetch('http://localhost:5000/api/health')
-      .then((res) => {
-        if (!res.ok) throw new Error('Health check failed')
-        return res.json()
-      })
-      .then((data) => setApiStatus(data.message))
-      .catch(() => setApiStatus('Backend not reachable'))
-  }, [])
-
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4">
-      <h1 className="text-5xl font-bold text-blue-600">CodeMentor AI</h1>
-      <p className="mt-2 text-lg text-gray-500">
-        AI-powered pair programmer for beginners
-      </p>
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white px-5 py-3 shadow-sm">
-        <p className="text-sm text-gray-700">{apiStatus}</p>
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-gray-600">Loading...</p>
       </div>
-    </div>
-  )
+    )
+  }
+
+  return isAuthenticated ? <Debug /> : <Home />
 }
 
 export default App

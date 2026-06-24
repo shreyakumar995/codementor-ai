@@ -1,15 +1,17 @@
 import os
 
 from dotenv import load_dotenv
+
+load_dotenv()
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 
+from app.routes.debug import debug_bp
 from app.routes.users import users_bp
 
 
 def create_app():
-    load_dotenv()
-
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret")
 
@@ -20,7 +22,7 @@ def create_app():
         return jsonify({"status": "ok", "message": "CodeMentor AI backend is running"})
 
     app.register_blueprint(users_bp, url_prefix="")
-
+    app.register_blueprint(debug_bp, url_prefix="")
     return app
 
 

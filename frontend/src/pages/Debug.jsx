@@ -1,21 +1,31 @@
 import { useAuth0 } from '@auth0/auth0-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import Editor from '../components/Editor'
 import ExplainPanel from '../components/ExplainPanel'
+import Quiz from '../components/Quiz'
+import { useApi } from '../lib/api'
 
 export default function Debug() {
   const { user, logout } = useAuth0()
+  const { authFetch } = useApi()
   const [code, setCode] = useState('# Paste your broken code here')
   const [language, setLanguage] = useState('python')
   const [errorMessage, setErrorMessage] = useState('')
   const [explanation, setExplanation] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [questions, setQuestions] = useState([])
+  const [sessionId, setSessionId] = useState(null)
+  const [quizDone, setQuizDone] = useState(false)
 
   const handleDebug = async () => {
     if (!code.trim()) return
 
     setIsLoading(true)
     setExplanation('')
+    setQuestions([])
+    setSessionId(null)
+    setQuizDone(false)
 
     try {
       const response = await fetch(
@@ -37,7 +47,43 @@ export default function Debug() {
       }
 
       const data = await response.json()
-      setExplanation(data.explanation)
+      const aiExplanation = data.explanation
+      setExplanation(aiExplanation)
+
+      try {
+        const sessionResponse = await authFetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code,
+            language,
+            error_message: errorMessage,
+            explanation: aiExplanation,
+          }),
+        })
+        const sessionData = await sessionResponse.json()
+        setSessionId(sessionData.session_id)
+      } catch (sessionErr) {
+        console.error('Session save failed:', sessionErr)
+      }
+
+      const quizResponse = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/quiz`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            language,
+            explanation: aiExplanation,
+            bug_type: 'general',
+          }),
+        },
+      )
+
+      if (quizResponse.ok) {
+        const quizData = await quizResponse.json()
+        setQuestions(quizData.questions || [])
+      }
     } catch (err) {
       setExplanation(err.message)
     } finally {
@@ -45,11 +91,45 @@ export default function Debug() {
     }
   }
 
+  const handleQuizComplete = async (score) => {
+    try {
+      if (sessionId) {
+        await authFetch(`/api/sessions/${sessionId}/quiz`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questions, score }),
+        })
+      }
+    } catch (err) {
+      console.error('Failed to save quiz score:', err)
+    } finally {
+      setQuizDone(true)
+    }
+  }
+
+  const handleQuizSkip = () => {
+    setQuizDone(true)
+  }
+
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <nav className="border-b border-gray-800 bg-gray-900/80">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold text-blue-500">CodeMentor AI</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-blue-500">CodeMentor AI</h1>
+            <Link
+              to="/history"
+              className="text-sm font-medium text-blue-400 hover:text-blue-300"
+            >
+              History
+            </Link>
+            <Link
+              to="/dashboard"
+              className="text-sm font-medium text-blue-400 hover:text-blue-300"
+            >
+              Dashboard
+            </Link>
+          </div>
           <div className="flex items-center gap-3">
             <img
               src={user?.picture}
@@ -117,6 +197,15 @@ export default function Debug() {
             AI explanation
           </h2>
           <ExplainPanel explanation={explanation} isLoading={isLoading} />
+          {questions.length > 0 && !quizDone && (
+            <div className="mt-6">
+              <Quiz
+                questions={questions}
+                onComplete={handleQuizComplete}
+                onSkip={handleQuizSkip}
+              />
+            </div>
+          )}
         </section>
       </main>
     </div>

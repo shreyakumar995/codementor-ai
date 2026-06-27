@@ -8,7 +8,11 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 
 from app.routes.debug import debug_bp
+from app.routes.progress import progress_bp
+from app.routes.quiz import quiz_bp
+from app.routes.sessions import sessions_bp
 from app.routes.users import users_bp
+
 
 
 def create_app():
@@ -23,6 +27,9 @@ def create_app():
 
     app.register_blueprint(users_bp, url_prefix="")
     app.register_blueprint(debug_bp, url_prefix="")
+    app.register_blueprint(quiz_bp, url_prefix="")
+    app.register_blueprint(sessions_bp, url_prefix="")
+    app.register_blueprint(progress_bp, url_prefix="")
     return app
 
 
